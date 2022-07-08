@@ -40,6 +40,7 @@ def get_opts():
         BoolVariable("javascript_eval", "Enable JavaScript eval interface", True),
         BoolVariable("threads_enabled", "Enable WebAssembly Threads support (limited browser support)", False),
         BoolVariable("gdnative_enabled", "Enable WebAssembly GDNative support (produces bigger binaries)", False),
+        BoolVariable("nodejs_enabled", "Enable NodeJS Optimization", False),
         BoolVariable("use_closure_compiler", "Use closure compiler to minimize JavaScript code", False),
     ]
 
@@ -202,6 +203,9 @@ def configure(env):
         env.Append(CCFLAGS=["-s", "RELOCATABLE=1"])
         env.Append(LINKFLAGS=["-s", "RELOCATABLE=1"])
         env.extra_suffix = ".gdnative" + env.extra_suffix
+
+    if env["nodejs_enabled"]:
+        env.Append(CPPDEFINES=["NODEJS"])
 
     # Reduce code size by generating less support code (e.g. skip NodeJS support).
     env.Append(LINKFLAGS=["-s", "ENVIRONMENT=web,worker"])

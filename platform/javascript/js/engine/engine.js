@@ -97,6 +97,10 @@ const Engine = (function () {
 						initPromise = Promise.reject(new Error('A base path must be provided when calling `init` and the engine is not loaded.'));
 						return initPromise;
 					}
+					
+					var host = this.config.host || "./";
+					basePath = host + basePath;
+
 					Engine.load(basePath, this.config.fileSizes[`${basePath}.wasm`]);
 				}
 				const me = this;
@@ -109,7 +113,8 @@ const Engine = (function () {
 							const cloned = new Response(response.clone().body, { 'headers': [['content-type', 'application/wasm']] });
 							Godot(me.config.getModuleConfig(loadPath, cloned)).then(function (module) {
 								const paths = me.config.persistentPaths;
-								module['initFS'](paths).then(function (err) {
+								const activateIDBFS = !me.config.is_server;
+								module['initFS'](paths, activateIDBFS).then(function (err) {
 									me.rtenv = module;
 									if (me.config.unloadAfterInit) {
 										Engine.unload();
@@ -212,7 +217,11 @@ const Engine = (function () {
 				this.config.update(override);
 				// Add main-pack argument.
 				const exe = this.config.executable;
-				const pack = this.config.mainPack || `${exe}.pck`;
+
+				const _pack = this.config.mainPack || `${exe}.pck`;
+				const host = this.config.host || "./";
+				const pack = host + _pack;
+
 				this.config.args = ['--main-pack', pack].concat(this.config.args);
 				// Start and init with execName as loadPath if not inited.
 				const me = this;
@@ -275,4 +284,7 @@ const Engine = (function () {
 }());
 if (typeof window !== 'undefined') {
 	window['Engine'] = Engine;
+}
+else if (typeof exports === 'object' && typeof module === 'object') {
+	module.exports = Engine;
 }

@@ -452,10 +452,23 @@ void EditorExportPlatformJavaScript::_fix_html(Vector<uint8_t> &p_html, const Re
 	config["canvasResizePolicy"] = p_preset->get("html/canvas_resize_policy");
 	config["experimentalVK"] = p_preset->get("html/experimental_virtual_keyboard");
 	config["focusCanvas"] = p_preset->get("html/focus_canvas_on_start");
+	config["is_server"] = p_preset->get("host/export_as_server");
 	config["gdnativeLibs"] = libs;
 	config["executable"] = p_name;
 	config["args"] = args;
 	config["fileSizes"] = p_file_sizes;
+
+	String base = "http://localhost:";
+	String port = (String) p_preset->get("host/port"); 
+	String _sep = "/";
+	String full = base + port + _sep;
+
+	if (p_preset->get("host/export_as_server")) {
+		config["host"] = full;
+	}
+	else {
+		config["host"] = "./";
+	}
 
 	String head_include;
 	if (p_preset->get("html/export_icon")) {
@@ -655,6 +668,8 @@ void EditorExportPlatformJavaScript::get_export_options(List<ExportOption> *r_op
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "html/head_include", PROPERTY_HINT_MULTILINE_TEXT), ""));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "html/canvas_resize_policy", PROPERTY_HINT_ENUM, "None,Project,Adaptive"), 2));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "html/focus_canvas_on_start"), true));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "host/export_as_server"), false));
+	r_options->push_back(ExportOption(PropertyInfo(Variant::INT, "host/port", PROPERTY_HINT_RANGE, "1,65535,1"), 8080));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "html/experimental_virtual_keyboard"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::BOOL, "progressive_web_app/enabled"), false));
 	r_options->push_back(ExportOption(PropertyInfo(Variant::STRING, "progressive_web_app/offline_page", PROPERTY_HINT_FILE, "*.html"), ""));

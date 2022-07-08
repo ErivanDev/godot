@@ -31,8 +31,13 @@
 #include "os_javascript.h"
 
 #include "core/io/json.h"
+#ifndef NODEJS
 #include "drivers/gles2/rasterizer_gles2.h"
 #include "drivers/gles3/rasterizer_gles3.h"
+#endif
+#ifdef NODEJS
+#include "drivers/dummy/rasterizer_dummy.h"
+#endif
 #include "drivers/unix/dir_access_unix.h"
 #include "drivers/unix/file_access_unix.h"
 #include "main/main.h"
@@ -93,7 +98,12 @@ void OS_JavaScript::send_notification_callback(int p_notification) {
 // Window (canvas)
 
 bool OS_JavaScript::check_size_force_redraw() {
+#ifndef NODEJS
 	return godot_js_display_size_update() != 0;
+#endif
+#ifdef NODEJS
+	return 0;
+#endif
 }
 
 void OS_JavaScript::fullscreen_change_callback(int p_fullscreen) {
@@ -120,16 +130,23 @@ Size2 OS_JavaScript::get_screen_size(int p_screen) const {
 }
 
 void OS_JavaScript::set_window_size(const Size2 p_size) {
+#ifndef NODEJS
 	if (video_mode.fullscreen) {
 		set_window_fullscreen(false);
 	}
 	godot_js_display_desired_size_set(p_size.x, p_size.y);
+#endif
 }
 
 Size2 OS_JavaScript::get_window_size() const {
+#ifndef NODEJS
 	int size[2];
 	godot_js_display_window_size_get(size, size + 1);
 	return Size2(size[0], size[1]);
+#endif
+#ifdef NODEJS
+	return Vector2(video_mode.width, video_mode.height);
+#endif
 }
 
 void OS_JavaScript::set_window_maximized(bool p_enabled) {
@@ -469,6 +486,7 @@ void OS_JavaScript::set_mouse_mode(OS::MouseMode p_mode) {
 }
 
 OS::MouseMode OS_JavaScript::get_mouse_mode() const {
+#ifndef NODEJS
 	if (godot_js_display_cursor_is_hidden()) {
 		return MOUSE_MODE_HIDDEN;
 	}
@@ -476,6 +494,11 @@ OS::MouseMode OS_JavaScript::get_mouse_mode() const {
 		return MOUSE_MODE_CAPTURED;
 	}
 	return MOUSE_MODE_VISIBLE;
+#endif
+
+#ifdef NODEJS
+	return MOUSE_MODE_HIDDEN;
+#endif
 }
 
 // Wheel
@@ -630,10 +653,16 @@ String OS_JavaScript::get_joy_guid(int p_device) const {
 // Video
 
 int OS_JavaScript::get_video_driver_count() const {
+#ifndef NODEJS
 	return VIDEO_DRIVER_MAX;
+#endif
+#ifdef NODEJS
+	return 1;
+#endif
 }
 
 const char *OS_JavaScript::get_video_driver_name(int p_driver) const {
+#ifndef NODEJS
 	switch (p_driver) {
 		case VIDEO_DRIVER_GLES3:
 			return "GLES3";
@@ -641,19 +670,33 @@ const char *OS_JavaScript::get_video_driver_name(int p_driver) const {
 			return "GLES2";
 	}
 	ERR_FAIL_V_MSG(NULL, "Invalid video driver index: " + itos(p_driver) + ".");
+#endif
+#ifdef NODEJS
+	return "Dummy";
+#endif
 }
 
 // Audio
 
 int OS_JavaScript::get_audio_driver_count() const {
+#ifndef NODEJS
 	return audio_drivers.size();
+#endif
+#ifdef NODEJS
+	return 1;
+#endif
 }
 
 const char *OS_JavaScript::get_audio_driver_name(int p_driver) const {
+#ifndef NODEJS
 	if (audio_drivers.size() <= p_driver) {
 		return "Unknown";
 	}
 	return audio_drivers[p_driver]->get_name();
+#endif
+#ifdef NODEJS
+	return "Dummy";
+#endif
 }
 
 // Clipboard
@@ -686,6 +729,12 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 	video_mode = p_desired;
 	// fullscreen_change_callback will correct this if the request is successful.
 	video_mode.fullscreen = false;
+
+#ifdef NODEJS
+	RasterizerDummy::make_current();
+#endif
+
+#ifndef NODEJS
 	// Handle contextmenu, webglcontextlost, initial canvas setup.
 	godot_js_display_setup_canvas(video_mode.width, video_mode.height, video_mode.fullscreen, is_hidpi_allowed() ? 1 : 0);
 
@@ -750,6 +799,7 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 				"Unable to initialize Video driver");
 		return ERR_UNAVAILABLE;
 	}
+#endif 
 
 	video_driver_index = p_video_driver;
 
@@ -758,8 +808,12 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 #ifndef NO_THREADS
 	visual_server = memnew(VisualServerWrapMT(visual_server, false));
 #endif
+#ifdef NODEJS
+	visual_server = memnew(VisualServerRaster);
+#endif
 	input = memnew(InputDefault);
 
+#ifndef NODEJS
 	// JS Input interface (js/libs/library_godot_input.js)
 	godot_js_input_mouse_button_cb(&OS_JavaScript::mouse_button_callback);
 	godot_js_input_mouse_move_cb(&OS_JavaScript::mouse_move_callback);
@@ -779,6 +833,7 @@ Error OS_JavaScript::initialize(const VideoMode &p_desired, int p_video_driver, 
 			MainLoop::NOTIFICATION_WM_FOCUS_IN,
 			MainLoop::NOTIFICATION_WM_FOCUS_OUT);
 	godot_js_display_vk_cb(&input_text_callback);
+#endif
 
 	visual_server->init();
 
@@ -942,10 +997,13 @@ void OS_JavaScript::alert(const String &p_alert, const String &p_title) {
 }
 
 void OS_JavaScript::set_window_title(const String &p_title) {
+#ifndef NODEJS
 	godot_js_display_window_title_set(p_title.utf8().get_data());
+#endif
 }
 
 void OS_JavaScript::set_icon(const Ref<Image> &p_icon) {
+#ifndef NODEJS
 	ERR_FAIL_COND(p_icon.is_null());
 	Ref<Image> icon = p_icon;
 	if (icon->is_compressed()) {
@@ -977,6 +1035,7 @@ void OS_JavaScript::set_icon(const Ref<Image> &p_icon) {
 
 	r = png.read();
 	godot_js_display_window_icon_set(r.ptr(), len);
+#endif
 }
 
 String OS_JavaScript::get_executable_path() const {
@@ -994,7 +1053,12 @@ String OS_JavaScript::get_name() const {
 }
 
 bool OS_JavaScript::can_draw() const {
+#ifndef NODEJS
 	return true; // Always?
+#endif
+#ifdef NODEJS
+	return false;
+#endif
 }
 
 String OS_JavaScript::get_user_data_dir() const {
@@ -1060,6 +1124,7 @@ OS_JavaScript *OS_JavaScript::get_singleton() {
 }
 
 OS_JavaScript::OS_JavaScript() {
+#ifndef NODEJS
 	// Expose method for requesting quit.
 	godot_js_os_request_quit_cb(&request_quit_callback);
 	// Set canvas ID
@@ -1097,4 +1162,5 @@ OS_JavaScript::OS_JavaScript() {
 	_set_logger(memnew(CompositeLogger(loggers)));
 
 	FileAccessUnix::close_notification_func = file_access_close_callback;
+#endif
 }

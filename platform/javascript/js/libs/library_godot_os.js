@@ -57,6 +57,8 @@ const GodotConfig = {
 	$GodotConfig__deps: ['$GodotRuntime'],
 	$GodotConfig: {
 		canvas: null,
+		host: './',
+		is_server: false,
 		locale: 'en',
 		canvas_resize_policy: 2, // Adaptive
 		virtual_keyboard: false,
@@ -67,6 +69,8 @@ const GodotConfig = {
 		init_config: function (p_opts) {
 			GodotConfig.canvas_resize_policy = p_opts['canvasResizePolicy'];
 			GodotConfig.canvas = p_opts['canvas'];
+			GodotConfig.host = p_opts['host'] || GodotConfig.host;
+			GodotConfig.is_server = p_opts['is_server'] || false;
 			GodotConfig.locale = p_opts['locale'] || GodotConfig.locale;
 			GodotConfig.virtual_keyboard = p_opts['virtualKeyboard'];
 			GodotConfig.persistent_drops = !!p_opts['persistentDrops'];
@@ -82,6 +86,8 @@ const GodotConfig = {
 		},
 		clear: function () {
 			GodotConfig.canvas = null;
+			GodotConfig.host = './',
+			GodotConfig.is_server = false;
 			GodotConfig.locale = 'en';
 			GodotConfig.canvas_resize_policy = 2;
 			GodotConfig.virtual_keyboard = false;
@@ -124,7 +130,7 @@ const GodotFS = {
 		// Returns a promise that resolves when the FS is ready.
 		// We keep track of mount_points, so that we can properly close the IDBFS
 		// since emscripten is not doing it by itself. (emscripten GH#12516).
-		init: function (persistentPaths) {
+		init: function (persistentPaths, activateIDBFS) {
 			GodotFS._idbfs = false;
 			if (!Array.isArray(persistentPaths)) {
 				return Promise.reject(new Error('Persistent paths must be an array'));
@@ -147,7 +153,7 @@ const GodotFS = {
 
 			GodotFS._mount_points.forEach(function (path) {
 				createRecursive(path);
-				FS.mount(IDBFS, {}, path);
+				if (activateIDBFS) FS.mount(IDBFS, {}, path)
 			});
 			return new Promise(function (resolve, reject) {
 				FS.syncfs(true, function (err) {

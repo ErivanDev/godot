@@ -123,6 +123,16 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		gdnativeLibs: [],
 		/**
 		 * @ignore
+		 * @type {string}
+		 */
+		host: undefined,
+		/**
+		 * @ignore
+		 * @type {boolean}
+		 */
+		is_server: false,
+		/**
+		 * @ignore
 		 * @type {Array.<string>}
 		 */
 		fileSizes: [],
@@ -250,6 +260,8 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 		this.experimentalVK = parse('experimentalVK', this.experimentalVK);
 		this.focusCanvas = parse('focusCanvas', this.focusCanvas);
 		this.gdnativeLibs = parse('gdnativeLibs', this.gdnativeLibs);
+		this.host = parse('host', this.host);
+		this.is_server = parse('is_server', this.is_server);
 		this.fileSizes = parse('fileSizes', this.fileSizes);
 		this.args = parse('args', this.args);
 		this.onExecute = parse('onExecute', this.onExecute);
@@ -305,27 +317,35 @@ const InternalConfig = function (initConfig) { // eslint-disable-line no-unused-
 	 * @param {function()} cleanup
 	 */
 	Config.prototype.getGodotConfig = function (cleanup) {
-		// Try to find a canvas
-		if (!(this.canvas instanceof HTMLCanvasElement)) {
-			const nodes = document.getElementsByTagName('canvas');
-			if (nodes.length && nodes[0] instanceof HTMLCanvasElement) {
-				this.canvas = nodes[0];
+		let locale;
+		if (!this.is_server) {
+			// Try to find a canvas
+			if (!(this.canvas instanceof HTMLCanvasElement)) {
+				const nodes = document.getElementsByTagName('canvas');
+				if (nodes.length && nodes[0] instanceof HTMLCanvasElement) {
+					this.canvas = nodes[0];
+				}
+				if (!this.canvas) {
+					throw new Error('No canvas found in page');
+				}
 			}
-			if (!this.canvas) {
-				throw new Error('No canvas found in page');
+			// Canvas can grab focus on click, or key events won't work.
+			if (this.canvas.tabIndex < 0) {
+				this.canvas.tabIndex = 0;
+			}
+
+			// Browser locale, or custom one if defined.
+			locale = this.locale;
+			if (!locale) {
+				locale = navigator.languages ? navigator.languages[0] : navigator.language;
+				locale = locale.split('.')[0];
 			}
 		}
-		// Canvas can grab focus on click, or key events won't work.
-		if (this.canvas.tabIndex < 0) {
-			this.canvas.tabIndex = 0;
+		else {
+			this.canvas = null;
+			locale = "en";
 		}
 
-		// Browser locale, or custom one if defined.
-		let locale = this.locale;
-		if (!locale) {
-			locale = navigator.languages ? navigator.languages[0] : navigator.language;
-			locale = locale.split('.')[0];
-		}
 		const onExit = this.onExit;
 
 		// Godot configuration.

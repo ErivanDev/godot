@@ -56,12 +56,14 @@ void cleanup_after_sync() {
 void main_loop_callback() {
 	uint64_t current_ticks = os->get_ticks_usec();
 
+#ifndef NODEJS
 	bool force_draw = os->check_size_force_redraw();
 	if (force_draw) {
 		Main::force_redraw();
 	} else if (current_ticks < target_ticks && !force_draw) {
 		return; // Skip frame.
 	}
+#endif
 
 	int target_fps = Engine::get_singleton()->get_target_fps();
 	if (target_fps > 0) {
