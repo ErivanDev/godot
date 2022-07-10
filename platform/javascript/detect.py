@@ -206,6 +206,7 @@ def configure(env):
 
     if env["nodejs_enabled"]:
         env.Append(CPPDEFINES=["NODEJS"])
+        env.extra_suffix = ".nodejs" + env.extra_suffix
 
     # Reduce code size by generating less support code (e.g. skip NodeJS support).
     env.Append(LINKFLAGS=["-s", "ENVIRONMENT=web,worker"])

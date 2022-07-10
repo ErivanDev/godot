@@ -273,8 +273,11 @@ class EditorExportPlatformJavaScript : public EditorExportPlatform {
 		EXPORT_MODE_GDNATIVE = 2,
 	};
 
-	String _get_template_name(ExportMode p_mode, bool p_debug) const {
+	String _get_template_name(ExportMode p_mode, bool p_debug, bool p_nodejs) const {
 		String name = "webassembly";
+		if (p_nodejs){
+			name += "_nodejs";
+		}
 		switch (p_mode) {
 			case EXPORT_MODE_THREADS:
 				name += "_threads";
@@ -697,10 +700,11 @@ bool EditorExportPlatformJavaScript::can_export(const Ref<EditorExportPreset> &p
 	String err;
 	bool valid = false;
 	ExportMode mode = (ExportMode)(int)p_preset->get("variant/export_type");
+	bool nodejs_enable = (bool)p_preset->get("host/export_as_server");
 
 	// Look for export templates (first official, and if defined custom templates).
-	bool dvalid = exists_export_template(_get_template_name(mode, true), &err);
-	bool rvalid = exists_export_template(_get_template_name(mode, false), &err);
+	bool dvalid = exists_export_template(_get_template_name(mode, true, nodejs_enable), &err);
+	bool rvalid = exists_export_template(_get_template_name(mode, false, nodejs_enable), &err);
 
 	if (p_preset->get("custom_template/debug") != "") {
 		dvalid = FileAccess::exists(p_preset->get("custom_template/debug"));
@@ -754,12 +758,14 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 	const String base_path = p_path.get_basename();
 	const String base_name = p_path.get_file().get_basename();
 
+	bool nodejs_enable = (bool)p_preset->get("host/export_as_server");
+
 	// Find the correct template
 	String template_path = p_debug ? custom_debug : custom_release;
 	template_path = template_path.strip_edges();
 	if (template_path == String()) {
 		ExportMode mode = (ExportMode)(int)p_preset->get("variant/export_type");
-		template_path = find_export_template(_get_template_name(mode, p_debug));
+		template_path = find_export_template(_get_template_name(mode, p_debug, nodejs_enable));
 	}
 
 	if (!DirAccess::exists(base_dir)) {
@@ -814,8 +820,13 @@ Error EditorExportPlatformJavaScript::export_project(const Ref<EditorExportPrese
 		f = nullptr;
 	}
 
+	String ext = ".html";
+	if (nodejs_enable) {
+		ext = ".json";
+	}
+
 	// Read the HTML shell file (custom or from template).
-	const String html_path = custom_html.empty() ? base_path + ".html" : custom_html;
+	const String html_path = custom_html.empty() ? base_path + ext : custom_html;
 	Vector<uint8_t> html;
 	f = FileAccess::open(html_path, FileAccess::READ);
 	if (!f) {

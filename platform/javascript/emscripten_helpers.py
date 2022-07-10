@@ -97,10 +97,18 @@ def create_template_zip(env, js, wasm, extra):
         out_files.append(zip_dir.File("manifest.json"))
         in_files.append("#misc/dist/html/offline.html")
         out_files.append(zip_dir.File("offline.html"))
-    else:
+    elif not env["nodejs_enabled"]:
         # HTML
         in_files.append("#misc/dist/html/full-size.html")
         out_files.append(zip_dir.File(binary_name + ".html"))
+        in_files.append(service_worker)
+        out_files.append(zip_dir.File(binary_name + ".service.worker.js"))
+        in_files.append("#misc/dist/html/offline-export.html")
+        out_files.append(zip_dir.File("godot.offline.html"))
+    else:
+        # HTML
+        in_files.append("#misc/dist/html/config.json")
+        out_files.append(zip_dir.File(binary_name + ".json"))
         in_files.append(service_worker)
         out_files.append(zip_dir.File(binary_name + ".service.worker.js"))
         in_files.append("#misc/dist/html/offline-export.html")
